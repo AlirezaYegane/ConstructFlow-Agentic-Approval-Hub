@@ -1,0 +1,5 @@
+id,project_id,requester_id,request_type,category,title,description,estimated_cost,priority,safety_flag,status,ai_summary,ai_risk_level,ai_suggested_route,final_route
+1,1,1,defect,render,Front stair render repair,Render on front entry stairs has cracked and needs color-matched patching before final handover.,450,medium,false,submitted,,,,
+2,1,4,variation,electrical,Additional exterior GPO,Client requested one additional weatherproof GPO at rear elevation near BBQ area.,780,low,false,submitted,,,,
+3,2,1,safety,excavation,Unprotected trench edge,Open trench edge near driveway access requires immediate barricade and supervisor review.,1200,high,true,submitted,,,,
+4,3,4,variation,plumbing,Stormwater reroute,Reroute rear stormwater line due to clash with revised landscaping and slab edge.,5400,high,false,submitted,,,,
