@@ -1,19 +1,33 @@
-﻿import { getRequests } from "@/lib/api";
+import Link from "next/link";
+
+import { getRequests } from "@/lib/api";
 import { formatCurrency, priorityBadgeClass, riskBadgeClass, statusBadgeClass } from "@/lib/ui";
+import RequestFilters from "@/components/request-filters";
 
 export const dynamic = "force-dynamic";
 
-export default async function RequestsPage() {
-  const requests = await getRequests();
+export default async function RequestsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    search?: string;
+    risk?: string;
+    priority?: string;
+    status?: string;
+  }>;
+}) {
+  const filters = await searchParams;
+
+  const requests = await getRequests({
+    search: filters.search,
+    risk: filters.risk,
+    priority: filters.priority,
+    status: filters.status,
+  });
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-semibold tracking-tight">Request Register</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Live approval requests sourced from the FastAPI backend.
-        </p>
-      </div>
+      <RequestFilters defaults={filters} />
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
@@ -37,7 +51,12 @@ export default async function RequestsPage() {
                 <tr key={item.id} className="border-t border-slate-100 align-top">
                   <td className="px-5 py-4 font-medium text-slate-900">#{item.id}</td>
                   <td className="px-5 py-4">
-                    <div className="font-medium text-slate-900">{item.title}</div>
+                    <Link
+                      href={`/requests/${item.id}`}
+                      className="font-medium text-slate-900 underline-offset-4 transition hover:underline"
+                    >
+                      {item.title}
+                    </Link>
                     <div className="mt-1 max-w-md text-xs leading-5 text-slate-500">
                       {item.description}
                     </div>
@@ -88,7 +107,7 @@ export default async function RequestsPage() {
               {requests.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="px-5 py-10 text-center text-slate-500">
-                    No requests found.
+                    No requests matched the current filters.
                   </td>
                 </tr>
               ) : null}
@@ -99,4 +118,3 @@ export default async function RequestsPage() {
     </div>
   );
 }
-
