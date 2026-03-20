@@ -1,13 +1,109 @@
-import Link from "next/link";
-import { notFound } from "next/navigation";
-
-import { getRequest, getRequestEvents } from "@/lib/api";
-import { formatCurrency, priorityBadgeClass, riskBadgeClass, statusBadgeClass } from "@/lib/ui";
-import RecomputeButton from "@/components/recompute-button";
+﻿import { notFound } from "next/navigation";
 import RequestActions from "@/components/request-actions";
-import RequestEventTimeline from "@/components/request-event-timeline";
+import type { RequestStatus } from "@/lib/request-status";
 
-export const dynamic = "force-dynamic";
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api";
+
+type RequestDetail = {
+  id: number;
+  status: RequestStatus;
+  title?: string | null;
+  request_type?: string | null;
+  requester_name?: string | null;
+  actor_name?: string | null;
+  priority?: string | null;
+  description?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  metadata?: Record<string, unknown> | null;
+  payload?: Record<string, unknown> | null;
+  data?: Record<string, unknown> | null;
+};
+
+type RequestEvent = {
+  id: number;
+  request_id: number;
+  actor_name?: string | null;
+  action?: string | null;
+  from_status?: string | null;
+  to_status?: string | null;
+  note?: string | null;
+  created_at?: string | null;
+};
+
+function formatDate(value?: string | null) {
+  if (!value) return "-";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat("en-AU", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function statusBadgeClass(status: string) {
+  switch (status) {
+    case "approved":
+      return "bg-emerald-100 text-emerald-800";
+    case "rejected":
+      return "bg-rose-100 text-rose-800";
+    case "under_review":
+      return "bg-blue-100 text-blue-800";
+    case "needs_info":
+      return "bg-amber-100 text-amber-800";
+    case "submitted":
+      return "bg-slate-100 text-slate-800";
+    case "document_generated":
+      return "bg-violet-100 text-violet-800";
+    case "notified":
+      return "bg-cyan-100 text-cyan-800";
+    case "closed":
+      return "bg-zinc-200 text-zinc-800";
+    default:
+      return "bg-slate-100 text-slate-700";
+  }
+}
+
+async function getRequest(id: string): Promise<RequestDetail> {
+  const res = await fetch(`${API_BASE}/requests/${id}`, {
+    cache: "no-store",
+  });
+
+  if (res.status === 404) {
+    notFound();
+  }
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch request ${id}`);
+  }
+
+  return res.json();
+}
+
+async function getEvents(id: string): Promise<RequestEvent[]> {
+  const res = await fetch(`${API_BASE}/requests/${id}/events`, {
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    return [];
+  }
+
+  const json = await res.json();
+
+  if (Array.isArray(json)) {
+    return json;
+  }
+
+  if (Array.isArray(json?.value)) {
+    return json.value;
+  }
+
+  return [];
+}
 
 export default async function RequestDetailPage({
   params,
@@ -15,143 +111,132 @@ export default async function RequestDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const requestId = Number(id);
 
-  if (Number.isNaN(requestId)) {
-    notFound();
-  }
+  const [request, events] = await Promise.all([getRequest(id), getEvents(id)]);
 
-  let request;
-  let events;
-
-  try {
-    request = await getRequest(requestId);
-    events = await getRequestEvents(requestId);
-  } catch {
-    notFound();
-  }
+  const extraData = request.metadata ?? request.payload ?? request.data ?? null;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <Link
-            href="/requests"
-            className="text-sm font-medium text-slate-500 transition hover:text-slate-900"
-          >
-            Back to requests
-          </Link>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
-            {request.title}
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Request #{request.id} · {request.project_name}
-          </p>
-        </div>
-
+    <main className="mx-auto max-w-5xl space-y-6 px-6 py-8">
+      <div className="flex flex-col gap-4 rounded-2xl border bg-white p-6 shadow-sm md:flex-row md:items-start md:justify-between">
         <div className="space-y-3">
-          <RecomputeButton requestId={request.id} />
-          <RequestActions requestId={request.id} />
-        </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="text-sm text-slate-500">Estimated Cost</div>
-          <div className="mt-2 text-2xl font-semibold text-slate-900">
-            {formatCurrency(request.estimated_cost)}
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="text-sm text-slate-500">Priority</div>
-          <div className="mt-3">
-            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${priorityBadgeClass(request.priority)}`}>
-              {request.priority}
-            </span>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="text-sm text-slate-500">AI Risk</div>
-          <div className="mt-3">
-            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${riskBadgeClass(request.ai_risk_level)}`}>
-              {request.ai_risk_level ?? "unknown"}
-            </span>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="text-sm text-slate-500">Status</div>
-          <div className="mt-3">
-            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${statusBadgeClass(request.status)}`}>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-semibold text-slate-900">
+              {request.title?.trim() || `Request #${request.id}`}
+            </h1>
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${statusBadgeClass(
+                request.status
+              )}`}
+            >
               {request.status}
             </span>
           </div>
-        </div>
-      </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <div className="space-y-6">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h3 className="text-lg font-semibold tracking-tight text-slate-900">
-              Request Overview
-            </h3>
-
-            <dl className="mt-5 grid gap-4 md:grid-cols-2">
-              <div>
-                <dt className="text-sm text-slate-500">Requester</dt>
-                <dd className="mt-1 text-sm font-medium text-slate-900">{request.requester_name}</dd>
-              </div>
-              <div>
-                <dt className="text-sm text-slate-500">Project</dt>
-                <dd className="mt-1 text-sm font-medium text-slate-900">{request.project_name}</dd>
-              </div>
-              <div>
-                <dt className="text-sm text-slate-500">Request Type</dt>
-                <dd className="mt-1 text-sm font-medium text-slate-900">{request.request_type}</dd>
-              </div>
-              <div>
-                <dt className="text-sm text-slate-500">Category</dt>
-                <dd className="mt-1 text-sm font-medium text-slate-900">{request.category}</dd>
-              </div>
-              <div>
-                <dt className="text-sm text-slate-500">Safety Flag</dt>
-                <dd className="mt-1 text-sm font-medium text-slate-900">{request.safety_flag ? "True" : "False"}</dd>
-              </div>
-              <div>
-                <dt className="text-sm text-slate-500">Final Route</dt>
-                <dd className="mt-1 text-sm font-medium text-slate-900">{request.final_route ?? "-"}</dd>
-              </div>
-            </dl>
-
-            <div className="mt-6">
-              <div className="text-sm text-slate-500">Description</div>
-              <p className="mt-2 text-sm leading-7 text-slate-700">{request.description}</p>
+          <div className="grid gap-2 text-sm text-slate-600 md:grid-cols-2">
+            <div>
+              <span className="font-medium text-slate-800">Request ID:</span>{" "}
+              {request.id}
             </div>
-
-            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <div className="text-sm font-semibold text-slate-900">AI Assessment</div>
-              <p className="mt-2 text-sm leading-7 text-slate-700">
-                {request.ai_summary ?? "No AI summary available."}
-              </p>
+            <div>
+              <span className="font-medium text-slate-800">Type:</span>{" "}
+              {request.request_type || "-"}
+            </div>
+            <div>
+              <span className="font-medium text-slate-800">Requester:</span>{" "}
+              {request.requester_name || request.actor_name || "-"}
+            </div>
+            <div>
+              <span className="font-medium text-slate-800">Priority:</span>{" "}
+              {request.priority || "-"}
+            </div>
+            <div>
+              <span className="font-medium text-slate-800">Created:</span>{" "}
+              {formatDate(request.created_at)}
+            </div>
+            <div>
+              <span className="font-medium text-slate-800">Updated:</span>{" "}
+              {formatDate(request.updated_at)}
             </div>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
-          <h3 className="text-lg font-semibold tracking-tight text-slate-900">
-            Audit Timeline
-          </h3>
-          <p className="mt-1 text-sm text-slate-500">
-            Real workflow events captured by the backend.
-          </p>
-
-          <div className="mt-5">
-            <RequestEventTimeline events={events} />
-          </div>
+        <div className="w-full md:w-auto md:min-w-[280px]">
+          <RequestActions requestId={request.id} status={request.status} />
         </div>
       </div>
-    </div>
+
+      <section className="rounded-2xl border bg-white p-6 shadow-sm">
+        <h2 className="mb-3 text-lg font-semibold text-slate-900">Description</h2>
+        <p className="whitespace-pre-wrap text-sm leading-7 text-slate-700">
+          {request.description?.trim() || "No description provided."}
+        </p>
+      </section>
+
+      <section className="rounded-2xl border bg-white p-6 shadow-sm">
+        <h2 className="mb-3 text-lg font-semibold text-slate-900">Payload / Metadata</h2>
+
+        {extraData ? (
+          <pre className="overflow-x-auto rounded-xl bg-slate-950 p-4 text-xs leading-6 text-slate-100">
+            {JSON.stringify(extraData, null, 2)}
+          </pre>
+        ) : (
+          <p className="text-sm text-slate-500">No extra payload available.</p>
+        )}
+      </section>
+
+      <section className="rounded-2xl border bg-white p-6 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-900">Audit Timeline</h2>
+          <span className="text-sm text-slate-500">{events.length} events</span>
+        </div>
+
+        {events.length === 0 ? (
+          <p className="text-sm text-slate-500">No audit events yet.</p>
+        ) : (
+          <div className="space-y-4">
+            {events.map((event) => (
+              <div
+                key={event.id}
+                className="rounded-xl border border-slate-200 p-4"
+              >
+                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900">
+                      {event.action || "event"}
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      By {event.actor_name || "Unknown actor"}
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-slate-500">
+                    {formatDate(event.created_at)}
+                  </div>
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                  {event.from_status && (
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
+                      from: {event.from_status}
+                    </span>
+                  )}
+
+                  {event.to_status && (
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
+                      to: {event.to_status}
+                    </span>
+                  )}
+                </div>
+
+                {event.note && (
+                  <p className="mt-3 text-sm text-slate-700">{event.note}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </main>
   );
 }

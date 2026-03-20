@@ -1,61 +1,114 @@
-"use client";
+﻿"use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  canApprove,
+  canReject,
+  canRequestInfo,
+  canSendToReview,
+  isTerminalStatus,
+  type RequestStatus,
+} from "@/lib/request-status";
 
 type Props = {
   requestId: number;
+  status: RequestStatus;
 };
 
-export default function RequestActions({ requestId }: Props) {
-  const router = useRouter();
-  const [message, setMessage] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+type ActionName = "approve" | "reject" | "request-info" | "send-to-review";
 
-  async function runAction(kind: "approve" | "reject") {
-    setMessage(null);
+export default function RequestActions({ requestId, status }: Props) {
+  const router = useRouter();
+  const [loadingAction, setLoadingAction] = useState<ActionName | null>(null);
+
+  async function runAction(action: ActionName) {
+    setLoadingAction(action);
 
     try {
-      const response = await fetch(`/api/requests/${requestId}/${kind}`, {
+      const res = await fetch(`/api/requests/${requestId}/${action}`, {
         method: "POST",
+        headers: {
+          Accept: "application/json",
+        },
+        cache: "no-store",
       });
 
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || `Failed to ${kind} request.`);
+      const contentType = res.headers.get("content-type") ?? "";
+      const data = contentType.includes("application/json")
+        ? await res.json()
+        : null;
+
+      if (!res.ok) {
+        alert(data?.detail ?? `Action "${action}" failed.`);
+        return;
       }
 
-      setMessage(kind === "approve" ? "Request approved." : "Request rejected.");
-
-      startTransition(() => {
-        router.refresh();
-      });
+      router.refresh();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Unexpected error.");
+      const message =
+        error instanceof Error ? error.message : "Unexpected network error.";
+      alert(message);
+    } finally {
+      setLoadingAction(null);
     }
   }
 
+  const isBusy = loadingAction !== null;
+
   return (
-    <div className="space-y-2">
-      <div className="flex gap-2">
-        <button
-          onClick={() => runAction("approve")}
-          disabled={isPending}
-          className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:opacity-60"
-        >
-          Approve
-        </button>
+    <div className="space-y-3">
+      {isTerminalStatus(status) && (
+        <div className="rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-600">
+          This request is in a terminal state. No further approval actions are available.
+        </div>
+      )}
 
-        <button
-          onClick={() => runAction("reject")}
-          disabled={isPending}
-          className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-rose-700 disabled:opacity-60"
-        >
-          Reject
-        </button>
+      <div className="flex flex-wrap gap-3">
+        {canSendToReview(status) && (
+          <button
+            type="button"
+            onClick={() => runAction("send-to-review")}
+            disabled={isBusy}
+            className="rounded-xl border px-4 py-2 text-sm font-medium transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loadingAction === "send-to-review" ? "Sending..." : "Send to Review"}
+          </button>
+        )}
+
+        {canApprove(status) && (
+          <button
+            type="button"
+            onClick={() => runAction("approve")}
+            disabled={isBusy}
+            className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loadingAction === "approve" ? "Approving..." : "Approve"}
+          </button>
+        )}
+
+        {canReject(status) && (
+          <button
+            type="button"
+            onClick={() => runAction("reject")}
+            disabled={isBusy}
+            className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loadingAction === "reject" ? "Rejecting..." : "Reject"}
+          </button>
+        )}
+
+        {canRequestInfo(status) && (
+          <button
+            type="button"
+            onClick={() => runAction("request-info")}
+            disabled={isBusy}
+            className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loadingAction === "request-info" ? "Sending..." : "Request Info"}
+          </button>
+        )}
       </div>
-
-      {message ? <p className="text-sm text-slate-500">{message}</p> : null}
     </div>
   );
 }
