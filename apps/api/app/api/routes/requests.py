@@ -6,9 +6,11 @@ from app.core.routing import evaluate_request
 from app.db.session import get_db
 from app.models.project import Project
 from app.models.request import Request
+from app.models.request_event import RequestEvent
 from app.models.user import User
 from app.schemas.request import RequestOut
 from app.schemas.request_create import RequestCreate
+from app.schemas.request_event import RequestEventOut
 
 router = APIRouter()
 
@@ -35,6 +37,27 @@ def serialize_request(
         ai_risk_level=record.ai_risk_level,
         ai_suggested_route=record.ai_suggested_route,
         final_route=record.final_route,
+    )
+
+def add_event(
+    db: Session,
+    *,
+    request_id: int,
+    actor_name: str,
+    action: str,
+    from_status: str | None,
+    to_status: str | None,
+    note: str | None = None,
+):
+    db.add(
+        RequestEvent(
+            request_id=request_id,
+            actor_name=actor_name,
+            action=action,
+            from_status=from_status,
+            to_status=to_status,
+            note=note,
+        )
     )
 
 @router.get("/requests", response_model=list[RequestOut])
@@ -88,6 +111,19 @@ def get_request(request_id: int, db: Session = Depends(get_db)):
 
     return serialize_request(item, project_map, user_map)
 
+@router.get("/requests/{request_id}/events", response_model=list[RequestEventOut])
+def list_request_events(request_id: int, db: Session = Depends(get_db)):
+    item = db.query(Request).filter(Request.id == request_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    return (
+        db.query(RequestEvent)
+        .filter(RequestEvent.request_id == request_id)
+        .order_by(RequestEvent.created_at.asc(), RequestEvent.id.asc())
+        .all()
+    )
+
 @router.post("/requests", response_model=RequestOut, status_code=201)
 def create_request(payload: RequestCreate, db: Session = Depends(get_db)):
     project_exists = db.query(Project).filter(Project.id == payload.project_id).first()
@@ -129,6 +165,28 @@ def create_request(payload: RequestCreate, db: Session = Depends(get_db)):
     )
 
     db.add(item)
+    db.flush()
+
+    requester_name = user_exists.name
+    add_event(
+        db,
+        request_id=item.id,
+        actor_name=requester_name,
+        action="submitted",
+        from_status=None,
+        to_status="submitted",
+        note="Request created in ConstructFlow.",
+    )
+    add_event(
+        db,
+        request_id=item.id,
+        actor_name="ConstructFlow AI",
+        action="ai_triaged",
+        from_status="submitted",
+        to_status="submitted",
+        note=result["summary"],
+    )
+
     db.commit()
     db.refresh(item)
 
@@ -157,6 +215,68 @@ def recompute_request(request_id: int, db: Session = Depends(get_db)):
     item.ai_suggested_route = result["route_label"]
     if not item.final_route:
         item.final_route = result["route_label"]
+
+    add_event(
+        db,
+        request_id=item.id,
+        actor_name="ConstructFlow AI",
+        action="ai_recomputed",
+        from_status=item.status,
+        to_status=item.status,
+        note=result["summary"],
+    )
+
+    db.commit()
+    db.refresh(item)
+
+    project_map = {p.id: p.name for p in db.query(Project).all()}
+    user_map = {u.id: u.name for u in db.query(User).all()}
+    return serialize_request(item, project_map, user_map)
+
+@router.post("/requests/{request_id}/approve", response_model=RequestOut)
+def approve_request(request_id: int, db: Session = Depends(get_db)):
+    item = db.query(Request).filter(Request.id == request_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    previous_status = item.status
+    item.status = "approved"
+
+    add_event(
+        db,
+        request_id=item.id,
+        actor_name="Project Manager",
+        action="approved",
+        from_status=previous_status,
+        to_status="approved",
+        note="Request approved through workflow action.",
+    )
+
+    db.commit()
+    db.refresh(item)
+
+    project_map = {p.id: p.name for p in db.query(Project).all()}
+    user_map = {u.id: u.name for u in db.query(User).all()}
+    return serialize_request(item, project_map, user_map)
+
+@router.post("/requests/{request_id}/reject", response_model=RequestOut)
+def reject_request(request_id: int, db: Session = Depends(get_db)):
+    item = db.query(Request).filter(Request.id == request_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    previous_status = item.status
+    item.status = "rejected"
+
+    add_event(
+        db,
+        request_id=item.id,
+        actor_name="Project Manager",
+        action="rejected",
+        from_status=previous_status,
+        to_status="rejected",
+        note="Request rejected through workflow action.",
+    )
 
     db.commit()
     db.refresh(item)

@@ -18,24 +18,23 @@ export type ApprovalRequest = {
   final_route: string | null;
 };
 
+export type ApprovalEvent = {
+  id: number;
+  request_id: number;
+  actor_name: string;
+  action: string;
+  from_status: string | null;
+  to_status: string | null;
+  note: string | null;
+  created_at: string;
+};
+
 export type RequestQuery = {
   search?: string;
   risk?: string;
   priority?: string;
   status?: string;
   projectId?: string;
-};
-
-export type CreateRequestInput = {
-  project_id: number;
-  requester_id: number;
-  request_type: string;
-  category: string;
-  title: string;
-  description: string;
-  estimated_cost: number;
-  priority: string;
-  safety_flag: boolean;
 };
 
 const API_BASE_URL =
@@ -80,12 +79,6 @@ export async function getRequest(requestId: number): Promise<ApprovalRequest> {
   return apiFetch<ApprovalRequest>(`/requests/${requestId}`);
 }
 
-export async function createRequest(input: CreateRequestInput): Promise<ApprovalRequest> {
-  return apiFetch<ApprovalRequest>("/requests", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-    },
-    body: JSON.stringify(input),
-  });
+export async function getRequestEvents(requestId: number): Promise<ApprovalEvent[]> {
+  return apiFetch<ApprovalEvent[]>(`/requests/${requestId}/events`);
 }
