@@ -25,6 +25,10 @@ export function canSendToReview(status: RequestStatus) {
   return status === "submitted" || status === "needs_info";
 }
 
-export function isTerminalStatus(status: RequestStatus) {
-  return status === "approved" || status === "rejected" || status === "closed";
+export function canGenerateDocument(status: RequestStatus) {
+  return status === "approved";
+}
+
+export function isHardTerminalStatus(status: RequestStatus) {
+  return status === "rejected" || status === "closed" || status === "notified";
 }

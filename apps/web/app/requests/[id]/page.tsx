@@ -32,6 +32,12 @@ type RequestEvent = {
   created_at?: string | null;
 };
 
+type DocumentPreview = {
+  title: string;
+  filename: string;
+  content: string;
+};
+
 function formatDate(value?: string | null) {
   if (!value) return "-";
 
@@ -105,6 +111,25 @@ async function getEvents(id: string): Promise<RequestEvent[]> {
   return [];
 }
 
+async function getDocumentPreview(
+  id: string,
+  status: RequestStatus
+): Promise<DocumentPreview | null> {
+  if (!["document_generated", "notified", "closed"].includes(status)) {
+    return null;
+  }
+
+  const res = await fetch(`${API_BASE}/requests/${id}/document-preview`, {
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    return null;
+  }
+
+  return res.json();
+}
+
 export default async function RequestDetailPage({
   params,
 }: {
@@ -113,6 +138,7 @@ export default async function RequestDetailPage({
   const { id } = await params;
 
   const [request, events] = await Promise.all([getRequest(id), getEvents(id)]);
+  const preview = await getDocumentPreview(id, request.status);
 
   const extraData = request.metadata ?? request.payload ?? request.data ?? null;
 
@@ -161,7 +187,7 @@ export default async function RequestDetailPage({
           </div>
         </div>
 
-        <div className="w-full md:w-auto md:min-w-[280px]">
+        <div className="w-full md:w-auto md:min-w-[320px]">
           <RequestActions requestId={request.id} status={request.status} />
         </div>
       </div>
@@ -182,6 +208,39 @@ export default async function RequestDetailPage({
           </pre>
         ) : (
           <p className="text-sm text-slate-500">No extra payload available.</p>
+        )}
+      </section>
+
+      <section className="rounded-2xl border bg-white p-6 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-900">Document Preview</h2>
+          {preview && (
+            <a
+              href={`${API_BASE}/requests/${request.id}/document-pdf`}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700"
+            >
+              Open PDF
+            </a>
+          )}
+        </div>
+
+        {preview ? (
+          <div className="space-y-3">
+            <div className="text-sm text-slate-500">{preview.filename}</div>
+            <pre className="overflow-x-auto whitespace-pre-wrap rounded-xl bg-slate-950 p-4 text-xs leading-6 text-slate-100">
+              {preview.content}
+            </pre>
+          </div>
+        ) : request.status === "approved" ? (
+          <p className="text-sm text-slate-500">
+            This request is approved and ready. Click <span className="font-medium">Generate Document</span> to create the controlled document preview and PDF.
+          </p>
+        ) : (
+          <p className="text-sm text-slate-500">
+            Document preview is not available for the current state.
+          </p>
         )}
       </section>
 

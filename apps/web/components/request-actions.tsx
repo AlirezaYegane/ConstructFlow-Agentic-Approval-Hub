@@ -7,7 +7,8 @@ import {
   canReject,
   canRequestInfo,
   canSendToReview,
-  isTerminalStatus,
+  canGenerateDocument,
+  isHardTerminalStatus,
   type RequestStatus,
 } from "@/lib/request-status";
 
@@ -16,7 +17,12 @@ type Props = {
   status: RequestStatus;
 };
 
-type ActionName = "approve" | "reject" | "request-info" | "send-to-review";
+type ActionName =
+  | "approve"
+  | "reject"
+  | "request-info"
+  | "send-to-review"
+  | "generate-document";
 
 export default function RequestActions({ requestId, status }: Props) {
   const router = useRouter();
@@ -58,9 +64,15 @@ export default function RequestActions({ requestId, status }: Props) {
 
   return (
     <div className="space-y-3">
-      {isTerminalStatus(status) && (
+      {status === "document_generated" && (
+        <div className="rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-700">
+          Document has been generated. Use the preview and PDF section below.
+        </div>
+      )}
+
+      {isHardTerminalStatus(status) && (
         <div className="rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-600">
-          This request is in a terminal state. No further approval actions are available.
+          This request is in a terminal state. No further workflow actions are available.
         </div>
       )}
 
@@ -106,6 +118,19 @@ export default function RequestActions({ requestId, status }: Props) {
             className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loadingAction === "request-info" ? "Sending..." : "Request Info"}
+          </button>
+        )}
+
+        {canGenerateDocument(status) && (
+          <button
+            type="button"
+            onClick={() => runAction("generate-document")}
+            disabled={isBusy}
+            className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loadingAction === "generate-document"
+              ? "Generating..."
+              : "Generate Document"}
           </button>
         )}
       </div>
