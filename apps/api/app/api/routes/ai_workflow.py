@@ -18,7 +18,7 @@ def analyze_request(request_id: int, db: Session = Depends(get_db)):
     if not request_obj:
         raise HTTPException(status_code=404, detail="Request not found")
 
-    payload = to_ai_request_payload(request_obj)
+    payload = to_ai_request_payload(request_obj, db)
     analysis = run_intake_analysis(payload)
 
     final_route = decide_final_route(
