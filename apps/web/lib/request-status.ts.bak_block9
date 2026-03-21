@@ -29,18 +29,6 @@ export function canGenerateDocument(status: RequestStatus) {
   return status === "approved";
 }
 
-export function canNotify(status: RequestStatus) {
-  return status === "document_generated";
-}
-
-export function canOpenDocument(status: RequestStatus) {
-  return (
-    status === "document_generated" ||
-    status === "notified" ||
-    status === "closed"
-  );
-}
-
 export function isHardTerminalStatus(status: RequestStatus) {
   return status === "rejected" || status === "closed" || status === "notified";
 }

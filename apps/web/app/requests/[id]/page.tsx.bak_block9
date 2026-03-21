@@ -216,7 +216,7 @@ export default async function RequestDetailPage({
           <h2 className="text-lg font-semibold text-slate-900">Document Preview</h2>
           {preview && (
             <a
-              href={`/api/requests/${request.id}/document-pdf`}
+              href={`${API_BASE}/requests/${request.id}/document-pdf`}
               target="_blank"
               rel="noreferrer"
               className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700"

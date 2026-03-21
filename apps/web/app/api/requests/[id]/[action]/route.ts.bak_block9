@@ -7,7 +7,6 @@ const ALLOWED_ACTIONS = new Set([
   "request-info",
   "send-to-review",
   "generate-document",
-  "notify",
 ]);
 
 export async function POST(
