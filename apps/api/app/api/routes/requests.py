@@ -1,3 +1,4 @@
+from app.services.knowledge_service import format_policy_context, retrieve_policy_chunks
 from app.services.document_generator import build_document_payload, build_document_pdf, DocumentGenerationError
 from fastapi.responses import Response
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -532,4 +533,28 @@ def notify_request(request_id: int, db: Session = Depends(get_db)):
         action="notified",
         note="Stakeholders notified after controlled document generation.",
     )
+
+@router.get("/requests/{request_id}/ai/policy-context")
+def get_request_policy_context(request_id: int, db: Session = Depends(get_db)):
+    request_obj = db.query(Request).filter(Request.id == request_id).first()
+    if not request_obj:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    parts = [
+        request_obj.title,
+        request_obj.description,
+        request_obj.request_type,
+        request_obj.category,
+        request_obj.priority,
+        "safety" if request_obj.safety_flag else None,
+    ]
+    policy_query = " | ".join([str(p) for p in parts if p])
+
+    items = retrieve_policy_chunks(policy_query, k=4)
+    return {
+        "request_id": request_id,
+        "policy_query": policy_query,
+        "policy_titles": [item.get("title") for item in items],
+        "policy_context": format_policy_context(policy_query, k=4),
+    }
 

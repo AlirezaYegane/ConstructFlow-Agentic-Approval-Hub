@@ -1,6 +1,13 @@
 ﻿# Approval Policy
 
-- Requests under 1000 AUD usually route to Site Supervisor.
-- Requests from 1000 AUD to under 5000 AUD usually route to Project Manager.
-- Requests 5000 AUD and above usually route to Director.
-- Any safety-critical issue must be escalated to Safety Officer.
+## Cost thresholds
+- estimated_cost < 1000 -> site_supervisor
+- 1000 <= estimated_cost < 5000 -> project_manager
+- estimated_cost >= 5000 -> director
+
+## Safety escalation
+- Any request with safety_flag=true must be escalated to safety_officer.
+- Any high-risk safety issue requires human approval.
+
+## Missing information
+- If material fields are missing, route to needs_review or needs_info before approval.

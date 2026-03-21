@@ -1,13 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException
+﻿from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.db.session import get_db
-from app.ai.service import run_intake_analysis
 from app.ai.rules import decide_final_route
-from app.services.request_ai_adapter import to_ai_request_payload
-
-# این import را با مدل واقعی پروژه‌ات sync کن
+from app.ai.service import run_intake_analysis
+from app.db.session import get_db
 from app.models.request import Request
+from app.services.knowledge_service import format_policy_context, retrieve_policy_chunks
+from app.services.request_ai_adapter import to_ai_request_payload
 
 router = APIRouter(prefix="/api/requests", tags=["ai-workflow"])
 
@@ -19,6 +18,24 @@ def analyze_request(request_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Request not found")
 
     payload = to_ai_request_payload(request_obj, db)
+
+    policy_parts = [
+        request_obj.title,
+        request_obj.description,
+        request_obj.request_type,
+        request_obj.category,
+        request_obj.priority,
+        "safety" if request_obj.safety_flag else None,
+    ]
+    policy_query = " | ".join([str(p) for p in policy_parts if p])
+
+    policy_items = retrieve_policy_chunks(policy_query, k=4)
+    policy_titles = [item.get("title") for item in policy_items]
+
+    payload["policy_query"] = policy_query
+    payload["policy_titles"] = policy_titles
+    payload["policy_context"] = format_policy_context(policy_query, k=4)
+
     analysis = run_intake_analysis(payload)
 
     final_route = decide_final_route(
@@ -28,7 +45,6 @@ def analyze_request(request_id: int, db: Session = Depends(get_db)):
         missing_fields=analysis.missing_fields,
     )
 
-    # optional persistence روی همان request
     if hasattr(request_obj, "ai_summary"):
         request_obj.ai_summary = analysis.summary
     if hasattr(request_obj, "ai_risk_level"):
@@ -45,6 +61,8 @@ def analyze_request(request_id: int, db: Session = Depends(get_db)):
     return {
         "request_id": request_id,
         "intake_analysis": analysis.model_dump(),
+        "policy_query": policy_query,
+        "policy_titles": policy_titles,
         "final_route": final_route,
         "human_decision_required": True,
     }

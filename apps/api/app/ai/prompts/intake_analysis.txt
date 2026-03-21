@@ -42,3 +42,10 @@ Rules:
 - If the description is too incomplete to assess, set "insufficient_evidence": true and explain briefly in "reasoning_short".
 - Do not mention policies unless explicitly provided.
 - Do not output anything outside the JSON object.
+
+## Policy grounding
+- If request_json contains "policy_context", treat it as retrieved internal policy evidence.
+- Use "policy_context" to guide the summary, risk_level, missing_fields, and suggested_approver_role.
+- Prioritize explicit safety escalation and routing rules found in policy_context.
+- Do not invent policy statements that are not present in request_json.
+

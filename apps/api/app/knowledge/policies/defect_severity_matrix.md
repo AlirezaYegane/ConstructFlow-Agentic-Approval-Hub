@@ -1,5 +1,10 @@
 ﻿# Defect Severity Matrix
 
-- Cosmetic defects are usually low risk.
-- Water ingress, electrical risk, structural concerns, and exposed hazards are high risk.
-- High-risk defects with incomplete details should not proceed directly to document generation.
+## Low
+- Cosmetic defects with no safety or compliance impact.
+
+## Medium
+- Functional defects affecting handover quality or rework planning.
+
+## High
+- Defects that create operational, compliance, or safety risk.
