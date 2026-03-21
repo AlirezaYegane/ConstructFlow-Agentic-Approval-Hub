@@ -130,6 +130,61 @@ async function getDocumentPreview(
   return res.json();
 }
 
+function parseDocumentPreview(content: string) {
+  const clean = content.replace(/^#\s*/gm, "").trim();
+  const blocks = clean
+    .split(/\n\s*\n/g)
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  if (blocks.length === 0) {
+    return {
+      title: "Generated Document",
+      meta: [] as Array<{ label: string; value: string }>,
+      sections: [] as Array<{ heading: string; body: string }>,
+    };
+  }
+
+  const title = blocks[0];
+  const metaBlock = blocks[1] ?? "";
+
+  const meta = metaBlock
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [label, ...rest] = line.split(":");
+      return {
+        label: label.trim(),
+        value: rest.join(":").trim(),
+      };
+    });
+
+  const sections = blocks.slice(2).reduce<Array<{ heading: string; body: string }>>(
+    (acc, block) => {
+      const lines = block.split("\n").map((line) => line.trim()).filter(Boolean);
+      if (lines.length === 0) return acc;
+
+      if (lines.length === 1) {
+        acc.push({
+          heading: "Details",
+          body: lines[0],
+        });
+        return acc;
+      }
+
+      acc.push({
+        heading: lines[0].replace(/:$/, ""),
+        body: lines.slice(1).join("\n"),
+      });
+      return acc;
+    },
+    []
+  );
+
+  return { title, meta, sections };
+}
+
 export default async function RequestDetailPage({
   params,
 }: {
@@ -141,6 +196,7 @@ export default async function RequestDetailPage({
   const preview = await getDocumentPreview(id, request.status);
 
   const extraData = request.metadata ?? request.payload ?? request.data ?? null;
+  const previewData = preview ? parseDocumentPreview(preview.content) : null;
 
   return (
     <main className="mx-auto max-w-5xl space-y-6 px-6 py-8">
@@ -212,8 +268,14 @@ export default async function RequestDetailPage({
       </section>
 
       <section className="rounded-2xl border bg-white p-6 shadow-sm">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900">Document Preview</h2>
+        <div className="mb-5 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Document Preview</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Styled controlled document preview for the generated approval record.
+            </p>
+          </div>
+
           {preview && (
             <a
               href={`/api/requests/${request.id}/document-pdf`}
@@ -226,12 +288,59 @@ export default async function RequestDetailPage({
           )}
         </div>
 
-        {preview ? (
-          <div className="space-y-3">
-            <div className="text-sm text-slate-500">{preview.filename}</div>
-            <pre className="overflow-x-auto whitespace-pre-wrap rounded-xl bg-slate-950 p-4 text-xs leading-6 text-slate-100">
-              {preview.content}
-            </pre>
+        {preview && previewData ? (
+          <div className="space-y-5">
+            <div className="rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-950 via-slate-900 to-violet-950 p-6 text-white">
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <div className="text-xs uppercase tracking-[0.2em] text-slate-300">
+                    ConstructFlow Document
+                  </div>
+                  <h3 className="mt-2 text-2xl font-semibold">
+                    {previewData.title}
+                  </h3>
+                  <p className="mt-2 text-sm text-slate-300">{preview.filename}</p>
+                </div>
+
+                <div className="rounded-full bg-emerald-400/20 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-emerald-200">
+                  Controlled Output
+                </div>
+              </div>
+            </div>
+
+            {previewData.meta.length > 0 && (
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                {previewData.meta.map((item) => (
+                  <div
+                    key={`${item.label}-${item.value}`}
+                    className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                  >
+                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {item.label}
+                    </div>
+                    <div className="mt-2 text-sm font-medium leading-6 text-slate-900">
+                      {item.value || "-"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="grid gap-4">
+              {previewData.sections.map((section, index) => (
+                <div
+                  key={`${section.heading}-${index}`}
+                  className="overflow-hidden rounded-2xl border border-slate-200"
+                >
+                  <div className="bg-violet-600 px-4 py-3 text-sm font-semibold text-white">
+                    {section.heading}
+                  </div>
+                  <div className="bg-white px-4 py-4 text-sm leading-7 text-slate-700">
+                    <p className="whitespace-pre-wrap">{section.body}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         ) : request.status === "approved" ? (
           <p className="text-sm text-slate-500">

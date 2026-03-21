@@ -9,7 +9,6 @@ import {
   canSendToReview,
   canGenerateDocument,
   canNotify,
-  canOpenDocument,
   isHardTerminalStatus,
   type RequestStatus,
 } from "@/lib/request-status";
@@ -146,17 +145,6 @@ export default function RequestActions({ requestId, status }: Props) {
           >
             {loadingAction === "notify" ? "Notifying..." : "Notify Stakeholders"}
           </button>
-        )}
-
-        {canOpenDocument(status) && (
-          <a
-            href={`/api/requests/${requestId}/document-pdf`}
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700"
-          >
-            Open PDF
-          </a>
         )}
       </div>
     </div>
