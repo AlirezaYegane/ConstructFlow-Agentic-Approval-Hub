@@ -1,0 +1,12 @@
+{
+  "input_file": "data\\raw\\osha\\osha_severe_injuries.csv",
+  "normalized_csv": "data\\processed\\osha\\osha_incidents_normalized.csv",
+  "training_jsonl": "data\\processed\\osha\\osha_risk_cases.jsonl",
+  "row_count": 102917,
+  "skipped_duplicate_incident_ids": 5,
+  "risk_counts": {
+    "critical": 27172,
+    "high": 75118,
+    "unknown": 627
+  }
+}

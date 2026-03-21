@@ -1,0 +1,10 @@
+{
+  "dataset_root": "data\\raw\\funsd\\dataset",
+  "manifest_csv": "data\\processed\\funsd\\funsd_manifest.csv",
+  "docs_jsonl": "data\\processed\\funsd\\funsd_docs.jsonl",
+  "doc_count": 199,
+  "split_counts": {
+    "train": 149,
+    "test": 50
+  }
+}
