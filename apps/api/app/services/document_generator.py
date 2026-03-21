@@ -123,7 +123,7 @@ Final Route:
 {final_route}
 
 Approval Outcome:
-This request has completed the approval gate and is ready for document-controlled downstream processing.
+A controlled document has been generated from the approved request and is ready for review and downstream handling.
 """
 
     filename = _slugify(f"request-{request_id}-approval-document") + ".pdf"
@@ -315,7 +315,7 @@ def build_document_pdf(request_obj: Any) -> bytes:
     y = draw_section("AI Assessment", ai_summary, y)
     y = draw_section(
         "Approval Outcome",
-        "This request has completed the approval gate and is ready for document-controlled downstream processing.",
+        "A controlled document has been generated from the approved request and is ready for review and downstream handling.",
         y,
     )
 

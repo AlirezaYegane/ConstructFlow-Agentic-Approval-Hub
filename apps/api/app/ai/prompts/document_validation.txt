@@ -52,4 +52,5 @@ Rules:
 - "pass" is allowed only when there are no material issues.
 - "needs_review" should be used when issues are fixable without rejecting the workflow.
 - "fail" should be used when the draft contains major unsupported or policy-conflicting content.
+- Do not invent facts, policies, approver roles, thresholds, or document content not present in the provided request data or retrieved evidence.
 - Do not output anything outside JSON.
