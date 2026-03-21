@@ -16,6 +16,48 @@ from app.schemas.request import RequestOut
 from app.schemas.request_create import RequestCreate
 from app.schemas.request_event import RequestEventOut
 
+from fastapi import APIRouter, Depends, HTTPException, Response
+from sqlalchemy.orm import Session
+
+from app.db.session import get_db
+from app.models import Project, Request, User
+from app.services.document_generator import (
+    DocumentGenerationError,
+    build_document_payload,
+    build_document_pdf,
+)
+
+def _build_document_request_payload(db: Session, request_obj: Request) -> dict:
+    project_name = (
+        db.query(Project.name)
+        .filter(Project.id == request_obj.project_id)
+        .scalar()
+    )
+    requester_name = (
+        db.query(User.name)
+        .filter(User.id == request_obj.requester_id)
+        .scalar()
+    )
+
+    return {
+        "id": request_obj.id,
+        "project_id": request_obj.project_id,
+        "project_name": project_name,
+        "requester_id": request_obj.requester_id,
+        "requester_name": requester_name,
+        "request_type": request_obj.request_type,
+        "category": request_obj.category,
+        "title": request_obj.title,
+        "description": request_obj.description,
+        "estimated_cost": request_obj.estimated_cost,
+        "priority": request_obj.priority,
+        "safety_flag": request_obj.safety_flag,
+        "status": request_obj.status,
+        "ai_summary": request_obj.ai_summary,
+        "ai_risk_level": request_obj.ai_risk_level,
+        "ai_suggested_route": request_obj.ai_suggested_route,
+        "final_route": request_obj.final_route,
+    }
 router = APIRouter()
 
 def apply_request_transition(
@@ -37,17 +79,15 @@ def apply_request_transition(
     db.commit()
     db.refresh(request_obj)
 
-    audit_fn = globals().get("create_audit_event")
-    if callable(audit_fn):
-        audit_fn(
-            db=db,
-            request_id=request_obj.id,
-            actor_name=actor_name,
-            action=action,
-            from_status=from_status,
-            to_status=result.to_status,
-            note=note,
-        )
+    add_event(
+        db=db,
+        request_id=request_obj.id,
+        actor_name=actor_name,
+        action=action,
+        from_status=from_status,
+        to_status=result.to_status,
+        note=note,
+    )
 
     return {
         "id": request_obj.id,
@@ -58,7 +98,6 @@ def apply_request_transition(
         "actor_name": actor_name,
         "note": note,
     }
-
 
 def serialize_request(
     record: Request,
@@ -95,16 +134,18 @@ def add_event(
     to_status: str | None,
     note: str | None = None,
 ):
-    db.add(
-        RequestEvent(
-            request_id=request_id,
-            actor_name=actor_name,
-            action=action,
-            from_status=from_status,
-            to_status=to_status,
-            note=note,
-        )
+    event = RequestEvent(
+        request_id=request_id,
+        actor_name=actor_name,
+        action=action,
+        from_status=from_status,
+        to_status=to_status,
+        note=note,
     )
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    return event
 
 @router.get("/requests", response_model=list[RequestOut])
 def list_requests(
@@ -403,8 +444,10 @@ def generate_document(request_id: int, db: Session = Depends(get_db)):
             detail=f"Document generation requires status 'approved', not '{request_obj.status}'.",
         )
 
+    document_request = _build_document_request_payload(db, request_obj)
+
     try:
-        document = build_document_payload(request_obj)
+        document = build_document_payload(document_request)
     except DocumentGenerationError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
@@ -432,8 +475,10 @@ def get_document_preview(request_id: int, db: Session = Depends(get_db)):
             detail=f"Document preview is not available for status '{request_obj.status}'.",
         )
 
+    document_request = _build_document_request_payload(db, request_obj)
+
     try:
-        return build_document_payload(request_obj)
+        return build_document_payload(document_request)
     except DocumentGenerationError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
@@ -447,12 +492,14 @@ def get_document_pdf(request_id: int, db: Session = Depends(get_db)):
     if request_obj.status not in {"document_generated", "notified", "closed"}:
         raise HTTPException(
             status_code=409,
-            detail=f"PDF is not available for status '{request_obj.status}'.",
+            detail=f"Document PDF is not available for status '{request_obj.status}'.",
         )
 
+    document_request = _build_document_request_payload(db, request_obj)
+
     try:
-        payload = build_document_payload(request_obj)
-        pdf_bytes = build_document_pdf(request_obj)
+        payload = build_document_payload(document_request)
+        pdf_bytes = build_document_pdf(document_request)
     except DocumentGenerationError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
