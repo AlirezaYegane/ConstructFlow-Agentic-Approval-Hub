@@ -2,3 +2,8 @@ __pycache__/
 *.py[cod]
 apps/api/.env
 .env
+apps/api/**/*.pyc
+apps/api/**/__pycache__/
+apps/api/constructflow.db
+apps/api/storage/
+*.bak
