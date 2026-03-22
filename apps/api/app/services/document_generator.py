@@ -113,7 +113,7 @@ Title:
 Description:
 {description}
 
-AI Assessment:
+Operational Brief:
 {ai_summary}
 
 AI Risk Level:
@@ -122,7 +122,7 @@ AI Risk Level:
 Final Route:
 {final_route}
 
-Approval Outcome:
+Controlled Output Summary:
 A controlled document has been generated from the approved request and is ready for review and downstream handling.
 """
 
@@ -230,7 +230,7 @@ def build_document_pdf(request_obj: Any) -> bytes:
     usable_width = width - (2 * margin_x)
 
     navy = colors.HexColor("#0f172a")
-    violet = colors.HexColor("#7c3aed")
+    violet = colors.HexColor("#16324F")
     green = colors.HexColor("#10b981")
     light_bg = colors.HexColor("#f8fafc")
     border = colors.HexColor("#cbd5e1")
@@ -244,13 +244,13 @@ def build_document_pdf(request_obj: Any) -> bytes:
 
     pdf.setFillColor(colors.white)
     pdf.setFont("Helvetica-Bold", 18)
-    pdf.drawString(margin_x + 8 * mm, height - 28 * mm, "ConstructFlow Approval Record")
+    pdf.drawString(margin_x + 8 * mm, height - 28 * mm, "ConstructFlow Controlled Record")
 
     pdf.setFont("Helvetica", 10)
     pdf.drawString(
         margin_x + 8 * mm,
         height - 34 * mm,
-        f"Controlled document for request {request_id}",
+        f"Approval outcome archived for request {request_id}",
     )
 
     badge_w = 38 * mm
@@ -261,7 +261,7 @@ def build_document_pdf(request_obj: Any) -> bytes:
     pdf.roundRect(badge_x, badge_y, badge_w, badge_h, 4 * mm, fill=1, stroke=0)
     pdf.setFillColor(colors.white)
     pdf.setFont("Helvetica-Bold", 9)
-    pdf.drawCentredString(badge_x + badge_w / 2, badge_y + 3.2 * mm, "DOCUMENT READY")
+    pdf.drawCentredString(badge_x + badge_w / 2, badge_y + 3.2 * mm, "CONTROLLED RECORD")
 
     y = height - 52 * mm
 
@@ -312,9 +312,9 @@ def build_document_pdf(request_obj: Any) -> bytes:
 
     y = draw_section("Request Title", title, y)
     y = draw_section("Description", description, y)
-    y = draw_section("AI Assessment", ai_summary, y)
+    y = draw_section("Operational Brief", ai_summary, y)
     y = draw_section(
-        "Approval Outcome",
+        "Controlled Output Summary",
         "A controlled document has been generated from the approved request and is ready for review and downstream handling.",
         y,
     )
