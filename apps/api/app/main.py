@@ -7,7 +7,7 @@ from app.api.routes.document_ai import router as document_ai_router
 from app.api.routes.knowledge import router as knowledge_router
 from app.api.routes.dashboard import router as dashboard_router
 from app.api.routes.ai_workflow import router as ai_workflow_router
-
+from fastapi.middleware.cors import CORSMiddleware
 
 Base.metadata.create_all(bind=engine)
 
@@ -19,3 +19,13 @@ app.include_router(knowledge_router)
 app.include_router(dashboard_router, prefix="/api")
 app.include_router(ai_workflow_router)
 app.include_router(document_ai_router)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)

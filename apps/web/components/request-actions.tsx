@@ -2,151 +2,69 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  canApprove,
-  canReject,
-  canRequestInfo,
-  canSendToReview,
-  canGenerateDocument,
-  canNotify,
-  isHardTerminalStatus,
-  type RequestStatus,
-} from "@/lib/request-status";
+import { backendUrl } from "@/lib/api-base";
+import type { RequestStatus } from "@/lib/request-status";
 
 type Props = {
   requestId: number;
   status: RequestStatus;
 };
 
-type ActionName =
-  | "approve"
-  | "reject"
-  | "request-info"
-  | "send-to-review"
-  | "generate-document"
-  | "notify";
-
 export default function RequestActions({ requestId, status }: Props) {
   const router = useRouter();
-  const [loadingAction, setLoadingAction] = useState<ActionName | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  async function runAction(action: ActionName) {
-    setLoadingAction(action);
+  async function generateDocument() {
+    setLoading(true);
+    setError(null);
 
     try {
-      const res = await fetch(`/api/requests/${requestId}/${action}`, {
+      const res = await fetch(backendUrl(`/requests/${requestId}/generate-document`), {
         method: "POST",
-        headers: {
-          Accept: "application/json",
-        },
-        cache: "no-store",
       });
 
-      const contentType = res.headers.get("content-type") ?? "";
-      const data = contentType.includes("application/json")
-        ? await res.json()
-        : null;
-
       if (!res.ok) {
-        alert(data?.detail ?? `Action "${action}" failed.`);
-        return;
+        const text = await res.text();
+        throw new Error(text || "Failed to generate document.");
       }
 
       router.refresh();
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unexpected network error.";
-      alert(message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to generate document.");
     } finally {
-      setLoadingAction(null);
+      setLoading(false);
     }
   }
 
-  const isBusy = loadingAction !== null;
+  if (status === "approved") {
+    return (
+      <div className="space-y-3">
+        <button
+          type="button"
+          onClick={generateDocument}
+          disabled={loading}
+          className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+        >
+          {loading ? "Generating..." : "Generate Document"}
+        </button>
 
-  return (
-    <div className="space-y-3">
-      {status === "document_generated" && (
-        <div className="rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-700">
-          Document has been generated. You can open the PDF or notify stakeholders.
-        </div>
-      )}
-
-      {isHardTerminalStatus(status) && (
-        <div className="rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-600">
-          This request is in a terminal state. No further workflow actions are available.
-        </div>
-      )}
-
-      <div className="flex flex-wrap gap-3">
-        {canSendToReview(status) && (
-          <button
-            type="button"
-            onClick={() => runAction("send-to-review")}
-            disabled={isBusy}
-            className="rounded-xl border px-4 py-2 text-sm font-medium transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {loadingAction === "send-to-review" ? "Sending..." : "Send to Review"}
-          </button>
-        )}
-
-        {canApprove(status) && (
-          <button
-            type="button"
-            onClick={() => runAction("approve")}
-            disabled={isBusy}
-            className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {loadingAction === "approve" ? "Approving..." : "Approve"}
-          </button>
-        )}
-
-        {canReject(status) && (
-          <button
-            type="button"
-            onClick={() => runAction("reject")}
-            disabled={isBusy}
-            className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {loadingAction === "reject" ? "Rejecting..." : "Reject"}
-          </button>
-        )}
-
-        {canRequestInfo(status) && (
-          <button
-            type="button"
-            onClick={() => runAction("request-info")}
-            disabled={isBusy}
-            className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {loadingAction === "request-info" ? "Sending..." : "Request Info"}
-          </button>
-        )}
-
-        {canGenerateDocument(status) && (
-          <button
-            type="button"
-            onClick={() => runAction("generate-document")}
-            disabled={isBusy}
-            className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {loadingAction === "generate-document"
-              ? "Generating..."
-              : "Generate Document"}
-          </button>
-        )}
-
-        {canNotify(status) && (
-          <button
-            type="button"
-            onClick={() => runAction("notify")}
-            disabled={isBusy}
-            className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {loadingAction === "notify" ? "Notifying..." : "Notify Stakeholders"}
-          </button>
+        {error && (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+            {error}
+          </div>
         )}
       </div>
-    </div>
-  );
+    );
+  }
+
+  if (["document_generated", "notified", "closed"].includes(status)) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+        Legacy notify removed. Use the AI Validation & Notification panel below.
+      </div>
+    );
+  }
+
+  return null;
 }

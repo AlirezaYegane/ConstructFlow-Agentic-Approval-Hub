@@ -1,9 +1,8 @@
 ﻿import { notFound } from "next/navigation";
 import RequestActions from "@/components/request-actions";
+import RequestAiPanel from "@/components/request-ai-panel";
+import { API_BASE } from "@/lib/api-base";
 import type { RequestStatus } from "@/lib/request-status";
-
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api";
 
 type RequestDetail = {
   id: number;
@@ -19,6 +18,11 @@ type RequestDetail = {
   metadata?: Record<string, unknown> | null;
   payload?: Record<string, unknown> | null;
   data?: Record<string, unknown> | null;
+  ai_summary?: string | null;
+  ai_risk_level?: string | null;
+  ai_suggested_route?: string | null;
+  final_route?: string | null;
+  policy_titles?: string[] | null;
 };
 
 type RequestEvent = {
@@ -217,8 +221,7 @@ export default async function RequestDetailPage({
 
           <div className="grid gap-2 text-sm text-slate-600 md:grid-cols-2">
             <div>
-              <span className="font-medium text-slate-800">Request ID:</span>{" "}
-              {request.id}
+              <span className="font-medium text-slate-800">Request ID:</span> {request.id}
             </div>
             <div>
               <span className="font-medium text-slate-800">Type:</span>{" "}
@@ -255,6 +258,62 @@ export default async function RequestDetailPage({
         </p>
       </section>
 
+      <section className="grid gap-4 xl:grid-cols-3">
+        <div className="rounded-2xl border bg-white p-6 shadow-sm xl:col-span-2">
+          <h2 className="mb-3 text-lg font-semibold text-slate-900">AI Workflow Summary</h2>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-xl bg-slate-50 p-4">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                AI Summary
+              </div>
+              <p className="mt-2 text-sm leading-7 text-slate-700">
+                {request.ai_summary || "No AI summary available yet."}
+              </p>
+            </div>
+
+            <div className="grid gap-4">
+              <div className="rounded-xl bg-slate-50 p-4">
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  AI Risk
+                </div>
+                <p className="mt-2 text-sm font-medium text-slate-900">
+                  {request.ai_risk_level || "-"}
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-slate-50 p-4">
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Final Route
+                </div>
+                <p className="mt-2 text-sm font-medium text-slate-900">
+                  {request.final_route || request.ai_suggested_route || "-"}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border bg-white p-6 shadow-sm">
+          <h2 className="mb-3 text-lg font-semibold text-slate-900">Policy References</h2>
+
+          {request.policy_titles?.length ? (
+            <div className="flex flex-wrap gap-2">
+              {request.policy_titles.map((title) => (
+                <span
+                  key={title}
+                  className="rounded-full bg-violet-100 px-3 py-1 text-xs font-medium text-violet-800"
+                >
+                  {title}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500">No policy references attached yet.</p>
+          )}
+        </div>
+      </section>
+
       <section className="rounded-2xl border bg-white p-6 shadow-sm">
         <h2 className="mb-3 text-lg font-semibold text-slate-900">Payload / Metadata</h2>
 
@@ -278,7 +337,7 @@ export default async function RequestDetailPage({
 
           {preview && (
             <a
-              href={`/api/requests/${request.id}/document-pdf`}
+              href={`${API_BASE}/requests/${request.id}/document-pdf`}
               target="_blank"
               rel="noreferrer"
               className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700"
@@ -296,9 +355,7 @@ export default async function RequestDetailPage({
                   <div className="text-xs uppercase tracking-[0.2em] text-slate-300">
                     ConstructFlow Document
                   </div>
-                  <h3 className="mt-2 text-2xl font-semibold">
-                    {previewData.title}
-                  </h3>
+                  <h3 className="mt-2 text-2xl font-semibold">{previewData.title}</h3>
                   <p className="mt-2 text-sm text-slate-300">{preview.filename}</p>
                 </div>
 
@@ -344,7 +401,9 @@ export default async function RequestDetailPage({
           </div>
         ) : request.status === "approved" ? (
           <p className="text-sm text-slate-500">
-            This request is approved and ready. Click <span className="font-medium">Generate Document</span> to create the controlled document preview and PDF.
+            This request is approved and ready. Click{" "}
+            <span className="font-medium">Generate Document</span> to create the controlled
+            document preview and PDF.
           </p>
         ) : (
           <p className="text-sm text-slate-500">
@@ -352,6 +411,12 @@ export default async function RequestDetailPage({
           </p>
         )}
       </section>
+
+      <RequestAiPanel
+        requestId={request.id}
+        requestStatus={request.status}
+        previewContent={preview?.content ?? null}
+      />
 
       <section className="rounded-2xl border bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
@@ -364,10 +429,7 @@ export default async function RequestDetailPage({
         ) : (
           <div className="space-y-4">
             {events.map((event) => (
-              <div
-                key={event.id}
-                className="rounded-xl border border-slate-200 p-4"
-              >
+              <div key={event.id} className="rounded-xl border border-slate-200 p-4">
                 <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                   <div>
                     <div className="text-sm font-semibold text-slate-900">
@@ -378,9 +440,7 @@ export default async function RequestDetailPage({
                     </div>
                   </div>
 
-                  <div className="text-xs text-slate-500">
-                    {formatDate(event.created_at)}
-                  </div>
+                  <div className="text-xs text-slate-500">{formatDate(event.created_at)}</div>
                 </div>
 
                 <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
@@ -397,9 +457,7 @@ export default async function RequestDetailPage({
                   )}
                 </div>
 
-                {event.note && (
-                  <p className="mt-3 text-sm text-slate-700">{event.note}</p>
-                )}
+                {event.note && <p className="mt-3 text-sm text-slate-700">{event.note}</p>}
               </div>
             ))}
           </div>
