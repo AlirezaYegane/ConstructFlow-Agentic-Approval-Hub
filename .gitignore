@@ -12,3 +12,7 @@ apps/api/**/__pycache__/
 apps/api/**/*.pyc
 apps/api/constructflow.db
 apps/api/storage/
+apps/api/**/__pycache__/
+apps/api/**/*.pyc
+apps/api/constructflow.db
+apps/api/storage/
