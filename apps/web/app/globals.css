@@ -1,26 +1,136 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --cf-bg: #f5f2eb;
+  --cf-surface: #ffffff;
+  --cf-ink: #0f172a;
+  --cf-muted: #5f6b7c;
+  --cf-line: rgba(15, 23, 42, 0.08);
+
+  --cf-navy: #16324f;
+  --cf-navy-2: #244c73;
+  --cf-teal: #1f6f78;
+  --cf-green: #2f6b5f;
+  --cf-amber: #b7791f;
+  --cf-rust: #b05645;
+
+  --cf-soft-navy: #eaf0f7;
+  --cf-soft-teal: #e9f5f3;
+  --cf-soft-amber: #fbf2e2;
+  --cf-soft-rust: #f8ebe8;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: var(--cf-bg);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  margin: 0;
+  min-height: 100vh;
+  color: var(--cf-ink);
+  background:
+    radial-gradient(circle at top left, rgba(22, 50, 79, 0.05), transparent 30%),
+    radial-gradient(circle at top right, rgba(31, 111, 120, 0.05), transparent 24%),
+    linear-gradient(180deg, #f8f5ef 0%, #f2eee6 100%);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+::selection {
+  background: rgba(22, 50, 79, 0.14);
+}
+
+.cf-grid {
+  background-image:
+    linear-gradient(rgba(15, 23, 42, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.025) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.cf-card {
+  border: 1px solid var(--cf-line);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+  backdrop-filter: blur(6px);
+}
+
+.cf-panel {
+  border: 1px solid var(--cf-line);
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+}
+
+.cf-kicker {
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.cf-primary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  background: var(--cf-navy);
+  color: #ffffff;
+  border: 1px solid rgba(22, 50, 79, 0.12);
+  padding: 0.8rem 1.15rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  transition: all 180ms ease;
+}
+
+.cf-primary-btn:hover {
+  background: var(--cf-navy-2);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.cf-secondary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  background: #ffffff;
+  color: var(--cf-ink);
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  padding: 0.8rem 1.15rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  transition: all 180ms ease;
+}
+
+.cf-secondary-btn:hover {
+  background: #f8fafc;
+  transform: translateY(-1px);
+}
+
+
+.cf-primary-btn,
+.cf-primary-btn:visited {
+  color: #ffffff !important;
+}
+
+.cf-primary-btn * {
+  color: inherit !important;
+}
+
+.cf-primary-btn:hover,
+.cf-primary-btn:hover * {
+  color: #ffffff !important;
+}
+
+.cf-primary-btn[aria-disabled="true"],
+.cf-primary-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }

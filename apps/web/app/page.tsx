@@ -1,119 +1,201 @@
-﻿const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api";
+﻿import Link from "next/link";
+import {
+  ArrowRight,
+  BarChart3,
+  Clock3,
+  FileCheck2,
+  ShieldAlert,
+  SplitSquareVertical,
+} from "lucide-react";
+import { PageIntro } from "@/components/shell/page-intro";
 
-type Summary = {
-  open_requests: number;
-  pending_approval: number;
-  approved_flow: number;
-  rejected: number;
-  high_risk: number;
-};
+const stats = [
+  { label: "Pending Decisions", value: "8", note: "Require review today", icon: Clock3 },
+  { label: "High-Risk Requests", value: "3", note: "Escalated items", icon: ShieldAlert },
+  { label: "Documents Ready", value: "6", note: "Controlled outputs", icon: FileCheck2 },
+  { label: "Avg Turnaround", value: "1.8d", note: "Decision cycle", icon: SplitSquareVertical },
+];
 
-type ChartItem = {
-  label: string;
-  value: number;
-};
+const queue = [
+  {
+    id: "REQ-003",
+    title: "Unprotected trench edge",
+    project: "Lindfield Duplex",
+    priority: "High",
+    route: "Safety Officer",
+  },
+  {
+    id: "REQ-004",
+    title: "Stormwater reroute",
+    project: "Chatswood Fitout",
+    priority: "High",
+    route: "Project Manager",
+  },
+  {
+    id: "REQ-002",
+    title: "Additional exterior GPO",
+    project: "Peakhurst Renovation",
+    priority: "Low",
+    route: "Site Supervisor",
+  },
+];
 
-type Charts = {
-  status_counts: ChartItem[];
-  type_counts: ChartItem[];
-  risk_counts: ChartItem[];
-};
+const activity = [
+  "Request 3 moved into decision review.",
+  "Approval document archived for Request 11.",
+  "Dashboard summary refreshed after new intake.",
+  "Audit trail captured for the latest transition.",
+];
 
-async function getSummary(): Promise<Summary> {
-  const res = await fetch(`${API_BASE}/dashboard/summary`, { cache: "no-store" });
-  if (!res.ok) {
-    return {
-      open_requests: 0,
-      pending_approval: 0,
-      approved_flow: 0,
-      rejected: 0,
-      high_risk: 0,
-    };
-  }
-  return res.json();
-}
-
-async function getCharts(): Promise<Charts> {
-  const res = await fetch(`${API_BASE}/dashboard/charts`, { cache: "no-store" });
-  if (!res.ok) {
-    return { status_counts: [], type_counts: [], risk_counts: [] };
-  }
-  return res.json();
-}
-
-function SimpleList({
-  title,
-  items,
-}: {
-  title: string;
-  items: ChartItem[];
-}) {
+export default function HomePage() {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold">{title}</h2>
-      <div className="mt-4 space-y-3">
-        {items.length === 0 ? (
-          <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
-            No data available
+    <div className="space-y-6">
+      <PageIntro
+        eyebrow="Command Center"
+        title="Operational overview with a clearer story"
+        description="See what needs attention, what carries risk, and which approvals are ready to become controlled records."
+        actions={
+          <div className="flex flex-wrap gap-3">
+            <Link href="/requests" className="cf-primary-btn !text-white hover:!text-white">
+              Open intake queue
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link href="/reports" className="cf-secondary-btn">
+              View reports
+              <BarChart3 className="h-4 w-4" />
+            </Link>
           </div>
-        ) : (
-          items.map((item) => (
-            <div
-              key={`${title}-${item.label}`}
-              className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 text-sm"
-            >
-              <span className="font-medium text-slate-700">{item.label}</span>
-              <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-700">
+        }
+      />
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {stats.map((item, index) => {
+          const Icon = item.icon;
+
+          const iconBg = [
+            "bg-[var(--cf-soft-navy)] text-[var(--cf-navy)]",
+            "bg-[var(--cf-soft-rust)] text-[var(--cf-rust)]",
+            "bg-[var(--cf-soft-teal)] text-[var(--cf-green)]",
+            "bg-[var(--cf-soft-amber)] text-[var(--cf-amber)]",
+          ][index];
+
+          return (
+            <div key={item.label} className="cf-card rounded-[28px] p-5">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-medium text-slate-500">{item.label}</div>
+                <div className={`rounded-2xl p-2 ${iconBg}`}>
+                  <Icon className="h-4 w-4" />
+                </div>
+              </div>
+              <div className="mt-4 text-4xl font-semibold tracking-tight text-slate-950">
                 {item.value}
-              </span>
+              </div>
+              <div className="mt-2 text-sm text-slate-500">{item.note}</div>
             </div>
-          ))
-        )}
+          );
+        })}
       </div>
-    </div>
-  );
-}
 
-export default async function HomePage() {
-  const [summary, charts] = await Promise.all([getSummary(), getCharts()]);
-
-  const stats = [
-    { label: "Open Requests", value: summary.open_requests },
-    { label: "Pending Approval", value: summary.pending_approval },
-    { label: "Approved Flow", value: summary.approved_flow },
-    { label: "Rejected", value: summary.rejected },
-    { label: "High Risk", value: summary.high_risk },
-  ];
-
-  return (
-    <div className="space-y-8">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        {stats.map((item) => (
-          <div
-            key={item.label}
-            className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-          >
-            <div className="text-sm text-slate-500">{item.label}</div>
-            <div className="mt-3 text-3xl font-semibold tracking-tight">
-              {item.value}
+      <div className="grid gap-6 xl:grid-cols-[1.3fr_0.9fr]">
+        <section className="cf-card rounded-[30px] p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="cf-kicker text-[11px] font-semibold text-slate-500">
+                Priority Queue
+              </div>
+              <h3 className="mt-2 text-xl font-semibold text-slate-950">
+                What needs attention now
+              </h3>
             </div>
+            <Link href="/requests" className="text-sm font-medium text-slate-600 hover:text-slate-950">
+              View all
+            </Link>
           </div>
-        ))}
-      </div>
 
-      <div className="grid gap-6 xl:grid-cols-3">
-        <SimpleList title="By Status" items={charts.status_counts} />
-        <SimpleList title="By Type" items={charts.type_counts} />
-        <SimpleList title="By Risk" items={charts.risk_counts} />
-      </div>
+          <div className="mt-6 space-y-3">
+            {queue.map((item) => (
+              <div
+                key={item.id}
+                className="rounded-[22px] border border-black/5 bg-white px-4 py-4 transition hover:-translate-y-0.5 hover:shadow-sm"
+              >
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                      {item.id}
+                    </div>
+                    <div className="mt-1 text-base font-semibold text-slate-950">{item.title}</div>
+                    <div className="mt-1 text-sm text-slate-500">{item.project}</div>
+                  </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold">Demo Outcome</h2>
-        <p className="mt-3 text-sm leading-7 text-slate-600">
-          This dashboard reflects the governed request lifecycle: intake, approval,
-          document generation, notification readiness, and audit visibility.
-        </p>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="rounded-full border border-[rgba(183,121,31,0.14)] bg-[var(--cf-soft-amber)] px-3 py-1 text-xs font-semibold text-[var(--cf-amber)]">
+                      {item.priority}
+                    </span>
+                    <span className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                      {item.route}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <div className="space-y-6">
+          <section className="cf-card rounded-[30px] p-6">
+            <div className="cf-kicker text-[11px] font-semibold text-slate-500">
+              Bottlenecks
+            </div>
+            <h3 className="mt-2 text-xl font-semibold text-slate-950">
+              Decision pressure points
+            </h3>
+            <div className="mt-5 space-y-4">
+              <div>
+                <div className="flex items-center justify-between text-sm text-slate-600">
+                  <span>Safety review</span>
+                  <span>78%</span>
+                </div>
+                <div className="mt-2 h-2 rounded-full bg-slate-100">
+                  <div className="h-2 w-[78%] rounded-full bg-[var(--cf-rust)]" />
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center justify-between text-sm text-slate-600">
+                  <span>Cost validation</span>
+                  <span>52%</span>
+                </div>
+                <div className="mt-2 h-2 rounded-full bg-slate-100">
+                  <div className="h-2 w-[52%] rounded-full bg-[var(--cf-amber)]" />
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center justify-between text-sm text-slate-600">
+                  <span>Document release</span>
+                  <span>33%</span>
+                </div>
+                <div className="mt-2 h-2 rounded-full bg-slate-100">
+                  <div className="h-2 w-[33%] rounded-full bg-[var(--cf-green)]" />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="cf-card rounded-[30px] p-6">
+            <div className="cf-kicker text-[11px] font-semibold text-slate-500">
+              Audit Activity
+            </div>
+            <h3 className="mt-2 text-xl font-semibold text-slate-950">
+              Recent trace events
+            </h3>
+            <div className="mt-5 space-y-3">
+              {activity.map((item) => (
+                <div key={item} className="rounded-[20px] border border-black/5 bg-white px-4 py-3 text-sm text-slate-600">
+                  {item}
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );

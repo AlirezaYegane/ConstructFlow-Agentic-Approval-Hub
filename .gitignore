@@ -16,3 +16,15 @@ apps/api/**/__pycache__/
 apps/api/**/*.pyc
 apps/api/constructflow.db
 apps/api/storage/
+apps/api/storage/chroma/
+
+# local build/runtime artifacts
+apps/api/app/__pycache__/
+*.pyc
+apps/api/constructflow.db
+*.bak
+
+apps/api/constructflow.db
+apps/api/app/__pycache__/
+*.pyc
+*.bak
